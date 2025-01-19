@@ -40,9 +40,10 @@ public class BoardPageController {
     @GetMapping("/")
     public String boardPage(
             @RequestParam(required = false) UUID boardId,
+            @RequestParam(required = false) String searchedTasks,
+            @RequestParam(required = false) String filter,
             Model model
     ) {
-
         List<Board> boards = boardRepository.findAll();
         List<User> users = userRepository.findAll();
 
@@ -52,31 +53,69 @@ public class BoardPageController {
 
         if (boardId != null) {
             selectedBoard = boardRepository.findById(boardId).orElse(null);
-            System.out.println(boardId);
+
             if (selectedBoard != null) {
                 cardsByBoard = cardRepository.findByBoard_Id(boardId);
-                for (Card card : cardsByBoard) {
-                    if (card.isFinisher()){
-                        List<Task> tasksByBoardId = taskRepository.findTasksByBoardId(card.getBoard().getId());
-                        for (Task tasksByCard : tasksByBoardId) {
-                            int deadlineStatus = taskService.getDeadlineStatus(tasksByCard.getDeadline());
-                            if (deadlineStatus==0){
-                                tasksByCard.setCard(card);
-                                taskRepository.save(tasksByCard);
-                            }
-//                            else {
-//                                Card card1 = cardsByBoard.get(0);
-//                                tasksByCard.setCard(card1);
-//                                taskRepository.save(tasksByCard);
-//                            }
-                        }
-                       cardsByBoard = cardService.sortCards(cardsByBoard);
-                       break;
+
+                // Fetch tasks by cards
+                tasksByCards = cardRepository.findTasksByCards(cardsByBoard);
+
+                // Apply search filter
+                if (searchedTasks != null && !searchedTasks.trim().isEmpty()) {
+                    tasksByCards = tasksByCards.stream()
+                            .filter(task -> task.getTitle() != null &&
+                                    task.getTitle().toLowerCase().contains(searchedTasks.toLowerCase()))
+                            .collect(Collectors.toList());
+                }
+
+                // Apply additional filters based on the `filter` parameter
+                if (filter != null) {
+                    switch (filter) {
+                        case "withoutDeadline":
+                            tasksByCards = tasksByCards.stream()
+                                    .filter(task -> task.getDeadline() == null)
+                                    .collect(Collectors.toList());
+                            break;
+
+                        case "warningTasks":
+                            tasksByCards = tasksByCards.stream()
+                                    .filter(task -> taskService.getDeadlineStatus(task.getDeadline()) == 1)
+                                    .collect(Collectors.toList());
+                            break;
+
+                        case "completed":
+                            tasksByCards = tasksByCards.stream()
+                                    .filter(task -> task.getStatus() == TaskStatus.COMPLETED)
+                                    .collect(Collectors.toList());
+                            break;
+
+                        case "expired":
+                            tasksByCards = tasksByCards.stream()
+                                    .filter(task -> taskService.getDeadlineStatus(task.getDeadline()) == -1)
+                                    .collect(Collectors.toList());
+                            break;
+
+                        default:
+                            break;
                     }
                 }
-                tasksByCards = cardRepository.findTasksByCards(cardsByBoard);
             }
         }
+        for (Card card : cardsByBoard) {
+            if (card.isFinisher()) {
+                List<Task> tasksByBoardId = taskRepository.findTasksByBoardId(card.getBoard().getId());
+                for (Task task : tasksByBoardId) {
+                    int deadlineStatus = taskService.getDeadlineStatus(task.getDeadline());
+                    if (deadlineStatus == 0) { // Deadline has passed
+                        task.setCard(card);
+                        taskRepository.save(task);
+                    }
+                }
+                cardsByBoard = cardService.sortCards(cardsByBoard); // Sort cards after updates
+                break;
+            }
+        }
+
 
         model.addAttribute("tasks", tasksByCards);
         model.addAttribute("cards", cardsByBoard);
@@ -87,6 +126,8 @@ public class BoardPageController {
 
         return "boardpage";
     }
+
+
 
 
     @GetMapping("/addboard")

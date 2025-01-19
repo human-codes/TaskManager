@@ -14,4 +14,8 @@ public interface TaskRepository extends JpaRepository<Task, UUID>, JpaSpecificat
     @Query("SELECT t FROM Task t WHERE t.card.board.id = :boardId")
     List<Task> findTasksByBoardId(@Param("boardId") UUID boardId);
 
+    @Query("SELECT t FROM Task t WHERE " +
+            "(t.card.board.id = :boardId OR :boardId IS NULL) AND " +
+            "(LOWER(t.title) LIKE LOWER(CONCAT('%', :searchKeyword, '%')) OR :searchKeyword IS NULL)")
+    List<Task> findTasksByBoardAndSearch(UUID boardId, String searchKeyword);
 }
