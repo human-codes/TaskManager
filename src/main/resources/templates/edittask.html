@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Edit Task</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f8f9fa;
+        }
+        .container {
+            max-width: 600px;
+            margin-top: 20px;
+        }
+        .card {
+            padding: 20px;
+            border-radius: 8px;
+            background-color: #ffffff;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        .field-label {
+            font-weight: bold;
+        }
+        .form-control {
+            margin-bottom: 15px;
+        }
+        .btn-container {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+        }
+        .user-list {
+            display: flex;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+        .user-name {
+            font-weight: bold;
+            font-size: 1.1rem;
+            margin-right: 10px;
+        }
+        .delete-user-btn {
+            color: white;
+            background-color: #dc3545;
+            border: none;
+            border-radius: 50%;
+            font-size: 0.8rem;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="card">
+        <h3 class="text-center mb-3">Edit Task</h3>
+
+        <!-- Main form to Save Task -->
+        <form action="/saveTask" method="post" enctype="multipart/form-data">
+            <input type="hidden" name="taskId" th:value="${task.id}">
+            <input type="hidden" name="selectedCardId" th:value="${selectedCardId}">
+            <input type="hidden" name="selectedBoardId" th:value="${selectedBoardId}">
+
+            <!-- Task Title -->
+            <div class="mb-3">
+                <label class="field-label" for="title">Title:</label>
+                <input type="text" id="title" name="title" class="form-control" th:value="${task.title}" required>
+            </div>
+
+            <!-- Task Description -->
+            <div class="mb-3">
+                <label class="field-label" for="description">Description:</label>
+                <textarea id="description" name="description" class="form-control" rows="3" required th:text="${task.description}"></textarea>
+            </div>
+
+            <!-- Task Deadline -->
+            <div class="mb-3">
+                <label class="field-label" for="deadline">Deadline:</label>
+                <input type="datetime-local" id="deadline" name="deadline" class="form-control" th:value="${task.deadline}">
+            </div>
+
+            <!-- Task Attachment -->
+            <div class="mb-3">
+                <label class="field-label">Attachment:</label>
+                <div th:if="${task.attachment != null}" class="mb-2">
+                    <a th:href="|/file/${task.attachment.id}|" target="_blank">View Current Attachment</a>
+                </div>
+                <input type="file" name="taskImage" class="form-control">
+            </div>
+
+            <!-- Save Changes -->
+            <div class="btn-container">
+                <button type="submit" class="btn btn-success">Save Changes</button>
+                <a th:href="|/taskDetail?taskId=${task.id}&selectedTask=${task.id}&selectedCardId=${selectedCardId}&selectedBoardId=${selectedBoardId}|" class="btn btn-secondary">Cancel</a>
+            </div>
+        </form>
+
+        <!-- Assigned Users -->
+        <div class="mb-3">
+            <label class="field-label">Assigned Users:</label>
+            <div th:if="${task.users != null && !task.users.isEmpty()}" th:each="user : ${task.users}" class="user-list">
+                <span class="user-name" th:text="${user.username}"></span>
+
+                <!-- Delete User Form -->
+                <form action="/deleteUser" method="post" style="display:inline;">
+                    <input type="hidden" name="taskId" th:value="${task.id}">
+                    <input type="hidden" name="userId" th:value="${user.id}">
+                    <input type="hidden" name="selectedCardId" th:value="${selectedCardId}">
+                    <input type="hidden" name="selectedBoardId" th:value="${selectedBoardId}">
+                    <button type="submit" class="delete-user-btn">&times;</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Add User Form -->
+        <div class="mb-3">
+            <label class="field-label" for="addUser">Add User:</label>
+            <div class="input-group">
+                <form action="/assignUser" method="post" class="input-group">
+                    <input type="hidden" name="taskId" th:value="${task.id}">
+                    <input type="hidden" name="selectedCardId" th:value="${selectedCardId}">
+                    <input type="hidden" name="selectedBoardId" th:value="${selectedBoardId}">
+                    <select id="addUser" name="userId" class="form-select">
+                        <option value="" selected>Select a user</option>
+                        <option th:each="user : ${unassignedUsers}" th:value="${user.id}" th:text="${user.username}"></option>
+                    </select>
+                    <button type="submit" id="assignUserBtn" class="btn btn-primary" disabled>Assign User</button>
+                </form>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+    // Enable/disable the "Assign User" button based on the user selection
+    document.getElementById('addUser').addEventListener('change', function() {
+        const submitButton = document.getElementById('assignUserBtn');
+        submitButton.disabled = this.value === ''; // Disable button if no user is selected
+    });
+</script>
+
+</body>
+</html>

@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Toggle Form</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    .form-container {
+      max-width: 500px;
+      margin: 20px auto;
+      padding: 20px;
+      border: 2px solid #dee2e6;
+      border-radius: 15px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="form-container">
+    <h4 class="mb-4">Card Name</h4>
+    <!-- Updated form with conditional logic -->
+    <form action="/saveCard" method="POST">
+      <!-- Name Input (always shown) -->
+      <div class="mb-4">
+        <input type="text" name="name" class="form-control" placeholder="Name Input" required>
+        <input type="hidden" name="selectedBoardId" th:value="${selectedBoardId}">
+      </div>
+
+      <!-- Conditional Logic for Starter and Finisher -->
+      <div th:if="${cards.isEmpty()}">
+        <!-- Cards are empty: show hidden starter input -->
+        <input type="hidden" name="starter" value="true">
+      </div>
+
+      <div th:if="${!cards.isEmpty()}">
+        <!-- Cards are not empty -->
+        <div th:if="${!isFinisher}">
+          <!-- Finisher is false: allow finisher selection -->
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" name="finisher" id="finisher" value="true">
+            <label class="form-check-label" for="finisher">Is Finisher</label>
+          </div>
+        </div>
+
+        <div th:if="${isFinisher}">
+          <!-- Finisher is true: no other options -->
+          <p>Only a new card name can be added.</p>
+        </div>
+      </div>
+
+      <button type="submit" class="btn btn-primary">Save</button>
+    </form>
+
+  </div>
+</div>
+</body>
+</html>

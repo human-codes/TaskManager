@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
+    <title>Task Board</title>
+    <link rel="stylesheet" th:href="@{/bootstrap.min.css}">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+        }
+
+        .board-section {
+            display: flex;
+            gap: 10px;
+            overflow-x: auto;
+            padding: 10px;
+            white-space: nowrap;
+        }
+
+        .board {
+            min-width: 250px;
+            max-width: 300px;
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 10px;
+        }
+
+        .task {
+            margin-bottom: 10px;
+        }
+
+        .task-button {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            align-items: start;
+            width: 100%;
+            padding: 10px;
+            border: none;
+            border-radius: 5px;
+            font-size: 0.9rem;
+            text-align: left;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        /* Default (No Deadline) */
+        .task-button.no-deadline {
+            background-color: #e9ecef;
+            color: #6c757d;
+        }
+
+        /* Deadline Passed */
+        .task-button.deadline-passed {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+
+        /* Deadline Within Two Days */
+        .task-button.deadline-warning {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+
+        /* Deadline More Than Two Days */
+        .task-button.deadline-safe {
+            background-color: #d4edda;
+            color: #155724;
+        }
+
+        .scrollable-menu {
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .task-navigation {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 5px;
+        }
+
+        .task-navigation button {
+            background: none;
+            border: none;
+            color: #007bff;
+            font-size: 1.2em;
+            cursor: pointer;
+        }
+
+        .task-navigation button:hover {
+            color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center p-3 bg-light border-bottom">
+        <div>
+            <button class="btn btn-primary btn-sm">Main Menu</button>
+            <button class="btn btn-secondary btn-sm">Chat with Team</button>
+        </div>
+        <div>
+            <input class="form-control d-inline-block w-auto" placeholder="Search task..." type="text">
+            <button class="btn btn-outline-secondary btn-sm">Without Deadline</button>
+            <button class="btn btn-outline-warning btn-sm">Warning Tasks</button>
+            <button class="btn btn-outline-success btn-sm">Completed</button>
+            <button class="btn btn-outline-danger btn-sm">Expired</button>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+            <!-- "All" Option -->
+            <form action="/tasks/all" method="get">
+                <button type="submit" class="btn p-0 border-0 bg-transparent">
+                    <div class="rounded-circle bg-primary text-white d-flex justify-content-center align-items-center"
+                         style="width: 40px; height: 40px;">
+                        All
+                    </div>
+                </button>
+            </form>
+
+            <!-- User Avatars -->
+            <div th:each="user : ${users}">
+                <form th:action="@{/tasks/user}" method="get">
+                    <input type="hidden" name="userId" th:value="${user.id}" />
+                    <button type="submit" class="btn p-0 border-0 bg-transparent">
+                        <img th:src="@{'/file/' + ${user.attachment.id}}" alt="User Avatar"
+                             class="rounded-circle border"
+                             style="width: 40px; height: 40px; object-fit: cover;" />
+                    </button>
+                </form>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Sidebar and Boards -->
+    <div class="d-flex">
+        <!-- Sidebar -->
+        <div class="bg-light border-end scrollable-menu p-3" style="width: 200px;">
+            <form action="/addboard">
+                <button class="btn btn-outline-primary btn-sm mb-3">+ Add Board</button>
+            </form>
+            <div class="mb-2" th:each="board1 : ${boards}">
+                <a class="btn btn-sm d-block text-center"
+                   th:classappend="${selectedBoard != null and selectedBoard.id == board1.id} ? 'btn-primary' : 'btn-outline-secondary'"
+                   th:href="|?boardId=${board1.id}|"
+                   th:text="${board1.title}">
+                </a>
+            </div>
+        </div>
+
+        <!-- Boards Section -->
+        <div class="w-100">
+            <div class="text-end p-3">
+                <form method="get" th:action="@{/addCard}" th:if="${selectedBoard != null}">
+                    <input name="selectedBoardId" th:value="${selectedBoard.id}" type="hidden"/>
+                    <button class="btn btn-primary btn-sm">+ Add Card</button>
+                </form>
+            </div>
+
+            <!-- Cards and Tasks -->
+            <div class="board-section" th:if="${!cards.isEmpty()}">
+                <div class="board" th:each="card : ${cards}">
+                    <div>
+                        <h5 class="text-center" th:text="${card.name}"></h5>
+                        <span th:if="${card.isStarter()}">starter</span>
+                        <span th:if="${card.isFinisher()}">finisher</span>
+
+                        <!-- Tasks -->
+                        <div class="task" th:each="task : ${tasks}" th:if="${task.card.id == card.id}">
+                            <form method="get" style="width: 100%;" action="/taskDetail">
+                                <input name="taskId" th:value="${task.id}" type="hidden"/>
+                                <button
+                                        class="task-button"
+                                        th:classappend="
+        ${task.completedAt != null} ? 'deadline-safe' :
+        (${task.deadline == null} ? 'no-deadline' :
+        (${taskService.getDeadlineStatus(task.deadline) == 0} ? 'deadline-passed' :
+        (${taskService.getDeadlineStatus(task.deadline) == 1} ? 'deadline-warning' :
+        'deadline-safe')))"
+                                    type="submit">
+                                    <span class="fw-bold" th:text="${task.title}"></span>
+                                    <small th:if="${task.deadline != null}" th:text="'Deadline: ' + ${task.deadline}"></small>
+                                    <small th:if="${task.deadline == null}">No Deadline</small>
+                                    <input name="selectedTask" th:value="${task.id}" type="hidden" />
+                                    <input name="selectedCardId" th:value="${card.id}" type="hidden" />
+                                    <input name="selectedBoardId" th:value="${selectedBoard.id}" type="hidden" />
+                                </button>
+
+                            </form>
+
+                            <!-- Task Navigation -->
+                            <div th:if="${cards.size() > 1}" class="task-navigation">
+                                <form action="/taskbackward" method="post" th:if="${!card.isStarter() && !card.isFinisher()}">
+                                    <input name="selectedTask" th:value="${task.id}" type="hidden"/>
+                                    <input name="selectedCardId" th:value="${card.id}" type="hidden"/>
+                                    <input name="selectedBoardId" th:value="${selectedBoard.id}" type="hidden"/>
+                                    <button>&larr;</button>
+                                </form>
+                                <form action="/tasktoward" method="post" th:if="${!card.isFinisher()}">
+                                    <input name="selectedTask" th:value="${task.id}" type="hidden"/>
+                                    <input name="selectedCardId" th:value="${card.id}" type="hidden"/>
+                                    <input name="selectedBoardId" th:value="${selectedBoard.id}" type="hidden"/>
+                                    <button>&rarr;</button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+
+                    <form action="/addTask" method="get">
+                        <input name="selectedCardId" th:value="${card.getId()}" type="hidden"/>
+                        <input name="selectedBoardId" th:value="${selectedBoard.id}" type="hidden"/>
+                        <button class="btn btn-outline-primary btn-sm w-100 mt-2">+ Add Task</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>
