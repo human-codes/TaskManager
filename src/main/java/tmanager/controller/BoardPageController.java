@@ -42,80 +42,72 @@ public class BoardPageController {
             @RequestParam(required = false) UUID boardId,
             @RequestParam(required = false) String searchedTasks,
             @RequestParam(required = false) String filter,
+            @RequestParam(required = false) UUID userId, // Added userId parameter
             Model model
     ) {
         List<Board> boards = boardRepository.findAll();
         List<User> users = userRepository.findAll();
-
-        Board selectedBoard = null;
         List<Card> cardsByBoard = List.of();
         List<Task> tasksByCards = List.of();
 
-        if (boardId != null) {
-            selectedBoard = boardRepository.findById(boardId).orElse(null);
+        Board selectedBoard = boardId != null ? boardRepository.findById(boardId).orElse(null) : null;
 
-            if (selectedBoard != null) {
-                cardsByBoard = cardRepository.findByBoard_Id(boardId);
+        if (selectedBoard != null) {
+            cardsByBoard = cardRepository.findByBoard_Id(boardId);
+            tasksByCards = cardRepository.findTasksByCards(cardsByBoard);
 
-                // Fetch tasks by cards
-                tasksByCards = cardRepository.findTasksByCards(cardsByBoard);
-
-                // Apply search filter
-                if (searchedTasks != null && !searchedTasks.trim().isEmpty()) {
+            // Filter tasks by user if userId is provided
+            if (userId != null) {
+                User selectedUser = userRepository.findById(userId).orElse(null);
+                if (selectedUser != null) {
                     tasksByCards = tasksByCards.stream()
-                            .filter(task -> task.getTitle() != null &&
-                                    task.getTitle().toLowerCase().contains(searchedTasks.toLowerCase()))
-                            .collect(Collectors.toList());
-                }
-
-                // Apply additional filters based on the `filter` parameter
-                if (filter != null) {
-                    switch (filter) {
-                        case "withoutDeadline":
-                            tasksByCards = tasksByCards.stream()
-                                    .filter(task -> task.getDeadline() == null)
-                                    .collect(Collectors.toList());
-                            break;
-
-                        case "warningTasks":
-                            tasksByCards = tasksByCards.stream()
-                                    .filter(task -> taskService.getDeadlineStatus(task.getDeadline()) == 1)
-                                    .collect(Collectors.toList());
-                            break;
-
-                        case "completed":
-                            tasksByCards = tasksByCards.stream()
-                                    .filter(task -> task.getStatus() == TaskStatus.COMPLETED)
-                                    .collect(Collectors.toList());
-                            break;
-
-                        case "expired":
-                            tasksByCards = tasksByCards.stream()
-                                    .filter(task -> taskService.getDeadlineStatus(task.getDeadline()) == -1)
-                                    .collect(Collectors.toList());
-                            break;
-
-                        default:
-                            break;
-                    }
+                            .filter(task -> task.getUsers().contains(selectedUser))
+                            .toList();
                 }
             }
+
+            // Search filter
+            if (searchedTasks != null && !searchedTasks.trim().isEmpty()) {
+                tasksByCards = tasksByCards.stream()
+                        .filter(task -> task.getTitle() != null &&
+                                task.getTitle().toLowerCase().contains(searchedTasks.toLowerCase()))
+                        .toList();
+            }
+
+            // Additional filters
+            if (filter != null) {
+                tasksByCards = switch (filter) {
+                    case "withoutDeadline" -> tasksByCards.stream()
+                            .filter(task -> task.getDeadline() == null)
+                            .toList();
+                    case "warningTasks" -> tasksByCards.stream()
+                            .filter(task -> taskService.getDeadlineStatus(task.getDeadline()) == 1)
+                            .toList();
+                    case "completed" -> tasksByCards.stream()
+                            .filter(task -> task.getStatus() == TaskStatus.COMPLETED)
+                            .toList();
+                    case "expired" -> tasksByCards.stream()
+                            .filter(task -> taskService.getDeadlineStatus(task.getDeadline()) == -1)
+                            .toList();
+                    default -> tasksByCards;
+                };
+            }
         }
+
+        // Update tasks with deadlines for 'finisher' cards
         for (Card card : cardsByBoard) {
             if (card.isFinisher()) {
                 List<Task> tasksByBoardId = taskRepository.findTasksByBoardId(card.getBoard().getId());
-                for (Task task : tasksByBoardId) {
-                    int deadlineStatus = taskService.getDeadlineStatus(task.getDeadline());
-                    if (deadlineStatus == 0) { // Deadline has passed
-                        task.setCard(card);
-                        taskRepository.save(task);
-                    }
-                }
+                tasksByBoardId.stream()
+                        .filter(task -> taskService.getDeadlineStatus(task.getDeadline()) == 0)
+                        .forEach(task -> {
+                            task.setCard(card);
+                            taskRepository.save(task);
+                        });
                 cardsByBoard = cardService.sortCards(cardsByBoard); // Sort cards after updates
                 break;
             }
         }
-
 
         model.addAttribute("tasks", tasksByCards);
         model.addAttribute("cards", cardsByBoard);
@@ -123,6 +115,7 @@ public class BoardPageController {
         model.addAttribute("boards", boards);
         model.addAttribute("taskService", taskService);
         model.addAttribute("users", users);
+        model.addAttribute("selectedUserId", userId); // Added attribute for UI reference
 
         return "boardpage";
     }
@@ -130,8 +123,10 @@ public class BoardPageController {
 
 
 
+
     @GetMapping("/addboard")
-    public String saveBoardPage(){
+    public String saveBoardPage(@RequestParam(required = false) UUID selectedBoardId, Model model) {
+        model.addAttribute("selectedBoardId", selectedBoardId);
         return "addboardpage";
     }
     @PostMapping("/saveBoard")
