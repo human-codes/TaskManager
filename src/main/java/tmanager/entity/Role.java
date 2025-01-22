@@ -7,6 +7,7 @@ import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.springframework.security.core.GrantedAuthority;
 import tmanager.entity.enums.RoleName;
 
 @Data
@@ -14,7 +15,12 @@ import tmanager.entity.enums.RoleName;
 @NoArgsConstructor
 @Entity
 @Table(name = "roles")
-public class Role extends BaseEntity {
+public class Role extends BaseEntity  implements GrantedAuthority {
     @Enumerated(EnumType.STRING)
     private RoleName name;
+
+    @Override
+    public String getAuthority() {
+        return this.name.name();
+    }
 }

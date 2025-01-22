@@ -15,7 +15,6 @@ public class CardService {
                 .sorted(Comparator
                         .comparing(Card::isStarter).reversed() // Starter cards first
                         .thenComparing(Card::isFinisher))     // Finisher cards last
-                        // Optional: Sorting by orders
                 .collect(Collectors.toList());
     }
 }

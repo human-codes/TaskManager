@@ -1,7 +1,9 @@
 package tmanager.controller;
 
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -18,10 +20,7 @@ import tmanager.service.TaskService;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Controller
@@ -36,13 +35,15 @@ public class BoardPageController {
     private final TaskRepository taskRepository;
     private final TaskService taskService;
     private final UserRepository userRepository;
+    private final CommentRepository commentRepository;
 
     @GetMapping("/")
     public String boardPage(
             @RequestParam(required = false) UUID boardId,
             @RequestParam(required = false) String searchedTasks,
             @RequestParam(required = false) String filter,
-            @RequestParam(required = false) UUID userId, // Added userId parameter
+            @RequestParam(required = false) UUID userId,
+            @AuthenticationPrincipal User user,// Added userId parameter
             Model model
     ) {
         List<Board> boards = boardRepository.findAll();
@@ -66,6 +67,10 @@ public class BoardPageController {
                 }
             }
 
+
+
+
+
             // Search filter
             if (searchedTasks != null && !searchedTasks.trim().isEmpty()) {
                 tasksByCards = tasksByCards.stream()
@@ -87,7 +92,7 @@ public class BoardPageController {
                             .filter(task -> task.getStatus() == TaskStatus.COMPLETED)
                             .toList();
                     case "expired" -> tasksByCards.stream()
-                            .filter(task -> taskService.getDeadlineStatus(task.getDeadline()) == -1)
+                            .filter(task -> task.getStatus()==TaskStatus.EXPIRED)
                             .toList();
                     default -> tasksByCards;
                 };
@@ -101,6 +106,7 @@ public class BoardPageController {
                 tasksByBoardId.stream()
                         .filter(task -> taskService.getDeadlineStatus(task.getDeadline()) == 0)
                         .forEach(task -> {
+                            task.setStatus(TaskStatus.EXPIRED);
                             task.setCard(card);
                             taskRepository.save(task);
                         });
@@ -109,14 +115,18 @@ public class BoardPageController {
             }
         }
 
+
+
         model.addAttribute("tasks", tasksByCards);
         model.addAttribute("cards", cardsByBoard);
         model.addAttribute("selectedBoard", selectedBoard);
         model.addAttribute("boards", boards);
         model.addAttribute("taskService", taskService);
         model.addAttribute("users", users);
-        model.addAttribute("selectedUserId", userId); // Added attribute for UI reference
-
+        model.addAttribute("selectedUserId",userId);
+         // Added attribute for UI reference
+        model.addAttribute("searchedTasks", searchedTasks);
+        model.addAttribute("filter", filter);
         return "boardpage";
     }
 
@@ -231,7 +241,7 @@ public class BoardPageController {
         // Save or update the task
         taskRepository.save(task);
 
-        return "redirect:/?boardId=" + selectedBoardId;
+        return "redirect:/?boardId=" + selectedBoardId+"&all=all";
     }
 
 
@@ -324,7 +334,8 @@ public class BoardPageController {
         } else if (!task.getStarted() && task.getStatus() == null) {
             task.setStatus(TaskStatus.IN_PROGRESS); // Default status if task is not started and not completed
         }
-
+        List<Comment> comments = commentRepository.findByTask(task);
+        model.addAttribute("comments", comments);
         model.addAttribute("allUsers", users);
         model.addAttribute("selectedCardId", selectedCardId);
         model.addAttribute("selectedBoardId", selectedBoardId);
@@ -333,8 +344,10 @@ public class BoardPageController {
     }
 
     @PostMapping("/deleteTask")
+    @Transactional
     public String deleteTask(@RequestParam UUID taskId,
                              @RequestParam UUID selectedBoardId){
+        commentRepository.deleteByTaskId(taskId);
         taskRepository.deleteById(taskId);
         return "redirect:/?boardId=" + selectedBoardId;
     }
@@ -407,8 +420,44 @@ public class BoardPageController {
 
 
 
+    @PostMapping("/addComment")
+    public String addComment(@RequestParam String text,
+                             @RequestParam UUID taskId,
+                             @RequestParam UUID selectedBoardId,
+                             @AuthenticationPrincipal User user) {
+        Task task = taskRepository.findById(taskId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Task not found"));
+
+        Comment comment = new Comment();
+        comment.setText(text);
+        comment.setDate(LocalDateTime.now());
+        comment.setUser(user); // Add the currently authenticated user
+        comment.setTask(task); // Associate comment with the task
+
+        commentRepository.save(comment);
+
+        return "redirect:/taskDetail?selectedTask=" + taskId + "&selectedBoardId=" + selectedBoardId + "&selectedCardId=" + task.getCard().getId();
+    }
+
+    @GetMapping("/getDeveloperResults")
+    public String getDeveloperResults(){
 
 
+        return "";
+    }
 
+    @GetMapping("/getCriminalsResults")
+    public String getCriminalsResults(Model model){
+        List<Map<String, Object>> expiredTaskCountByUser = taskRepository.findExpiredTaskCountByUser();
+        model.addAttribute("expiredTaskCountByUser", expiredTaskCountByUser);
+        return "expiredreportpage";
+    }
+
+    @GetMapping("/taskStatistics")
+    public String getTaskStatistics(Model model) {
+        List<Map<String, Object>> taskStatistics = taskRepository.findTaskStatisticsByUser();
+        model.addAttribute("taskStatistics", taskStatistics);
+        return "taskStatisticsPage";
+    }
 
 }

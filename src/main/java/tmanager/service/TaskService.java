@@ -1,11 +1,24 @@
 package tmanager.service;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import tmanager.entity.Task;
+import tmanager.entity.User;
+import tmanager.entity.enums.TaskStatus;
+import tmanager.repository.TaskRepository;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 @Service
+@RequiredArgsConstructor
 public class TaskService {
+
+    private final TaskRepository taskRepository;
+
+
     public int getDeadlineStatus(LocalDateTime deadline) {
         LocalDateTime now = LocalDateTime.now();
 
@@ -20,4 +33,17 @@ public class TaskService {
         }
         return 2; // More than 2 days away
     }
+
+    public void updateTaskStatuses() {
+        List<Task> tasks = taskRepository.findAll();
+        LocalDateTime now = LocalDateTime.now();
+        for (Task task : tasks) {
+            if (task.getDeadline() != null && task.getDeadline().isBefore(now) && task.getStatus() != TaskStatus.COMPLETED) {
+                task.setStatus(TaskStatus.EXPIRED);
+                taskRepository.save(task);
+            }
+        }
+    }
+
+
 }

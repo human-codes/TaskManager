@@ -111,15 +111,33 @@
             width: auto;
         }
 
+        .selected-user {
+            background-color: rgba(30, 144, 255, 0.2); /* Light blue for better contrast */
+            padding: 3px;
+            border: 2px solid #007bff;                /* Blue border for emphasis */
+            border-radius: 50%;                       /* Keep avatar circular */
+        }
+
+        .selected-user img {
+            border: 2px solid #0056b3;                /* Darker border for selected state */
+        }
+
+
+
     </style>
 </head>
 <body>
 <div class="container-fluid">
     <!-- Header -->
     <div class="d-flex justify-content-between align-items-center p-3 bg-light border-bottom">
-        <div>
-            <button class="btn btn-primary btn-sm">Main Menu</button>
-            <button class="btn btn-secondary btn-sm">Chat with Team</button>
+        <div style="display: flex; gap: 10px; align-items: center;">
+            <form action="/taskStatistics" method="get" style="margin: 0;">
+                <button class="btn btn-primary btn-sm">Developer Results</button>
+            </form>
+            <form action="/getCriminalsResults" method="get" style="margin: 0;">
+                <button class="btn btn-secondary btn-sm">Criminals</button>
+            </form>
+            <a href="/logout" class="btn btn-danger btn-sm">Logout</a>
         </div>
         <div>
             <!-- Search Form -->
@@ -142,31 +160,31 @@
                 <!-- "All" Button -->
                 <form action="?" method="get" class="d-inline">
                     <input type="hidden" name="boardId" th:value="${selectedBoard?.id}">
-                    <button class="btn btn-outline-primary btn-sm" type="submit">All</button>
+                    <button class="btn btn-outline-primary btn-sm" th:classappend="${filter == null} ? 'active'" type="submit">All</button>
                 </form>
 
                 <form action="?" method="get" class="d-inline">
                     <input type="hidden" name="boardId" th:value="${selectedBoard?.id}">
                     <input type="hidden" name="filter" value="withoutDeadline">
-                    <button class="btn btn-outline-secondary btn-sm" type="submit">Without Deadline</button>
+                    <button class="btn btn-outline-secondary btn-sm" th:classappend="${filter == 'withoutDeadline'} ? 'active'" type="submit">Without Deadline</button>
                 </form>
 
                 <form action="?" method="get" class="d-inline">
                     <input type="hidden" name="boardId" th:value="${selectedBoard?.id}">
                     <input type="hidden" name="filter" value="warningTasks">
-                    <button class="btn btn-outline-warning btn-sm" type="submit">Warning Tasks</button>
+                    <button class="btn btn-outline-warning btn-sm" th:classappend="${filter == 'warningTasks'} ? 'active'" type="submit">Warning Tasks</button>
                 </form>
 
                 <form action="?" method="get" class="d-inline">
                     <input type="hidden" name="boardId" th:value="${selectedBoard?.id}">
                     <input type="hidden" name="filter" value="completed">
-                    <button class="btn btn-outline-success btn-sm" type="submit">Completed</button>
+                    <button class="btn btn-outline-success btn-sm" th:classappend="${filter == 'completed'} ? 'active'" type="submit">Completed</button>
                 </form>
 
                 <form action="?" method="get" class="d-inline">
                     <input type="hidden" name="boardId" th:value="${selectedBoard?.id}">
                     <input type="hidden" name="filter" value="expired">
-                    <button class="btn btn-outline-danger btn-sm" type="submit">Expired</button>
+                    <button class="btn btn-outline-danger btn-sm" th:classappend="${filter == 'expired'} ? 'active'" type="submit">Expired</button>
                 </form>
 
             </div>
@@ -174,27 +192,36 @@
 
 
         <!-- Display all tasks -->
-        <form action="/" method="get">
-            <input type="hidden" name="boardId" th:value="${selectedBoard?.id}" />
-            <button type="submit" class="btn p-0 border-0 bg-transparent">
-                <div class="rounded-circle bg-primary text-white d-flex justify-content-center align-items-center"
-                     style="width: 40px; height: 40px;">
-                    All
-                </div>
-            </button>
-        </form>
 
-        <!-- Display tasks per user -->
-        <div th:each="user : ${users}">
+
+        <!-- User Avatars -->
+        <div class="d-flex align-items-center gap-2 mb-3">
             <form action="/" method="get">
-                <input type="hidden" name="userId" th:value="${user.id}" />
                 <input type="hidden" name="boardId" th:value="${selectedBoard?.id}" />
+                <input type="hidden" name="all" value="all">
                 <button type="submit" class="btn p-0 border-0 bg-transparent">
-                    <img th:src="@{'/file/' + ${user.attachment.id}}" alt="User Avatar"
-                         class="rounded-circle border"
-                         style="width: 40px; height: 40px; object-fit: cover;" />
+                    <div class="rounded-circle bg-primary text-white d-flex justify-content-center align-items-center"
+                         style="width: 40px; height: 40px;">
+                        All
+                    </div>
                 </button>
             </form>
+            <div th:each="user : ${users}">
+                <form action="/" method="get" class="m-0 p-0">
+                    <input type="hidden" name="userId" th:value="${user.id}" />
+                    <input type="hidden" name="boardId" th:value="${selectedBoard?.id}" />
+                    <button type="submit"
+                            class="btn p-0 border-0 bg-transparent"
+                            th:class="${selectedUserId == user.id} ? 'btn p-0 border-0 bg-transparent selected-user' : 'btn p-0 border-0 bg-transparent'">
+                        <img th:src="@{'/file/' + ${user.attachment.id}}" alt="User Avatar"
+                             class="rounded-circle border"
+                             style="width: 40px; height: 40px; object-fit: cover;" />
+                    </button>
+
+                </form>
+            </div>
+
+
         </div>
 
 
@@ -225,6 +252,8 @@
                 </form>
             </div>
 
+
+
             <!-- Cards and Tasks -->
             <div class="board-section" th:if="${!cards.isEmpty()}">
                 <div class="board" th:each="card : ${cards}">
@@ -232,7 +261,22 @@
                         <div class="d-flex justify-content-between align-items-center">
                             <h5 class="text-center" th:text="${card.name}"></h5>
                             <!-- Edit Button -->
+                            <div class="task-navigation">
+                                <form action="/cardbackward" method="post" >
+                                    <input name="selectedTask"  type="hidden"/>
+                                    <input name="selectedCardId"  type="hidden"/>
+                                    <input name="selectedBoardId" type="hidden"/>
+                                    <button>&larr;</button>
+                                </form>
+                                <form action="/cardtoward" method="post" >
+                                    <input name="selectedTask"type="hidden"/>
+                                    <input name="selectedCardId" type="hidden"/>
+                                    <input name="selectedBoardId" type="hidden"/>
+                                    <button>&rarr;</button>
+                                </form>
+                            </div>
                             <form th:action="@{'/editCard/' + ${card.id}}" method="get">
+
                                 <button type="submit" class="btn btn-outline-secondary btn-sm">
                                     <i class="bi bi-pencil" style="font-size: 1rem;"></i> <!-- Pencil Icon -->
                                 </button>
@@ -244,6 +288,7 @@
 
                         <!-- Tasks -->
                         <div class="task" th:each="task : ${tasks}" th:if="${task.card.id == card.id}">
+
                             <form method="get" style="width: 100%;" action="/taskDetail">
                                 <input name="taskId" th:value="${task.id}" type="hidden"/>
                                 <button

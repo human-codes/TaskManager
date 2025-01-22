@@ -55,6 +55,106 @@
             flex: 1 1 48%;
             margin-bottom: 10px; /* Reduced margin between elements */
         }
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f8f9fa;
+        }
+
+        .container {
+            max-width: 600px;
+            margin-top: 20px;
+        }
+
+        .card {
+            padding: 15px;
+            border-radius: 8px;
+            background-color: #ffffff;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn-container {
+            display: flex;
+            gap: 10px;
+            justify-content: space-between;
+            margin-top: 10px;
+        }
+
+        .task-image {
+            max-width: 40%;
+            height: auto;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            margin-bottom: 10px;
+        }
+
+        .task-status {
+            font-weight: bold;
+        }
+
+        .field-label {
+            font-weight: bold;
+        }
+
+        .no-data {
+            color: #999;
+            font-style: italic;
+        }
+
+        /* Comments Section */
+        .comments-container {
+            margin-top: 20px;
+        }
+
+        .comment-card {
+            display: flex;
+            gap: 10px;
+            padding: 15px;
+            border-radius: 8px;
+            background-color: #f1f1f1;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            margin-bottom: 15px;
+        }
+
+        .comment-avatar {
+            flex-shrink: 0;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background-color: #ddd;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            font-weight: bold;
+            color: #555;
+        }
+
+        .comment-content {
+            flex: 1;
+        }
+
+        .comment-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+
+        .comment-username {
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .comment-date {
+            font-size: 12px;
+            color: #777;
+        }
+
+        .comment-text {
+            font-size: 14px;
+            line-height: 1.5;
+            margin: 0;
+        }
     </style>
 </head>
 <body>
@@ -113,6 +213,37 @@
             <p class="task-status" th:text="${task.status.name}">
             </p>
         </div>
+        <!-- Comment Section -->
+        <div class="comments-container">
+            <h4>Comments</h4>
+
+            <!-- Display existing comments -->
+            <div th:each="comment : ${comments}" class="comment-card">
+                <div class="comment-avatar" th:text="${comment.user.username.substring(0, 1).toUpperCase()}"></div>
+                <div class="comment-content">
+                    <div class="comment-header">
+                        <span class="comment-username" th:text="${comment.user.username}">Username</span>
+                        <span class="comment-date" th:text="${#temporals.format(comment.date, 'yyyy-MM-dd HH:mm')}">Date</span>
+                    </div>
+                    <p class="comment-text" th:text="${comment.text}"></p>
+                </div>
+            </div>
+
+            <!-- If no comments exist -->
+            <p th:if="${comments == null or #lists.isEmpty(comments)}" class="no-data">No comments available.</p>
+
+            <!-- Add New Comment -->
+            <form action="/addComment" method="post" class="mt-3">
+                <input type="hidden" name="taskId" th:value="${task.id}">
+                <input type="hidden" name="selectedBoardId" th:value="${selectedBoardId}">
+                <div class="mb-3">
+                    <label for="commentText" class="form-label">Add a Comment</label>
+                    <textarea id="commentText" name="text" class="form-control" rows="3" required></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary">Submit Comment</button>
+            </form>
+        </div>
+    </div>
 
         <!-- Buttons -->
         <div class="btn-container">
