@@ -16,20 +16,27 @@
         .board-section {
             display: flex;
             gap: 10px;
-            overflow-x: auto;
+            overflow-x: auto;  /* Horizontal scrolling when there are many cards */
             padding: 10px;
             white-space: nowrap;
+            flex-wrap: wrap;  /* Allow cards to wrap to the next row */
         }
 
         .board {
-            min-width: 250px;
-            max-width: 300px;
+            min-width: 200px;
+            max-width: 250px;
             background-color: #f8f9fa;
             border: 1px solid #dee2e6;
             border-radius: 5px;
             padding: 10px;
+            flex: 1 1 auto;  /* Allow cards to stretch and adjust */
+            margin-bottom: 10px;  /* Space between cards */
         }
 
+        .scrollable-menu {
+            max-height: 90vh;
+            overflow-y: auto;  /* Vertical scrolling for sidebar */
+        }
         .task {
             margin-bottom: 10px;
         }
@@ -66,10 +73,30 @@
             color: #856404;
         }
 
+
         /* Deadline More Than Two Days */
         .task-button.deadline-safe {
             background-color: #d4edda;
             color: #155724;
+        }
+        /* Deadline More Than Two Days (Blue Background) */
+        .task-button.deadline-safe {
+            background-color: #d4edda; /* Light green */
+            color: #155724; /* Dark green */
+        }
+
+        /* New class for more than 2 days (Blue Background) */
+        .task-button.deadline-blue {
+            background-color: #cce5ff; /* Light blue */
+            color: #004085; /* Dark blue */
+        }
+        /* Deadline More Than Two Days (Blue Background) */
+
+
+        /* New class for more than 2 days (Blue Background) */
+        .task-button.deadline-blue {
+            background-color: #cce5ff; /* Light blue */
+            color: #004085; /* Dark blue */
         }
 
         .scrollable-menu {
@@ -94,6 +121,7 @@
         .task-navigation button:hover {
             color: #0056b3;
         }
+
         .d-flex {
             display: flex;
             align-items: center;
@@ -121,8 +149,6 @@
         .selected-user img {
             border: 2px solid #0056b3;                /* Darker border for selected state */
         }
-
-
 
     </style>
 </head>
@@ -154,8 +180,6 @@
             </form>
 
             <!-- Filter Buttons -->
-
-
             <div class="d-flex flex-wrap gap-2">
                 <!-- "All" Button -->
                 <form action="?" method="get" class="d-inline">
@@ -190,9 +214,7 @@
             </div>
         </div>
 
-
         <!-- Display all tasks -->
-
 
         <!-- User Avatars -->
         <div class="d-flex align-items-center gap-2 mb-3">
@@ -220,17 +242,14 @@
 
                 </form>
             </div>
-
-
         </div>
-
 
     </div>
 
     <!-- Sidebar and Boards -->
     <div class="d-flex">
         <!-- Sidebar -->
-        <div class="bg-light border-end scrollable-menu p-3" style="width: 200px;">
+        <div class="bg-light border-end scrollable-menu p-3" style="width: 200px; min-width: 200px;">
             <form action="/addboard">
                 <button class="btn btn-outline-primary btn-sm mb-3">+ Add Board</button>
             </form>
@@ -252,8 +271,6 @@
                 </form>
             </div>
 
-
-
             <!-- Cards and Tasks -->
             <div class="board-section" th:if="${!cards.isEmpty()}">
                 <div class="board" th:each="card : ${cards}">
@@ -261,23 +278,24 @@
                         <div class="d-flex justify-content-between align-items-center">
                             <h5 class="text-center" th:text="${card.name}"></h5>
                             <!-- Edit Button -->
-                            <div class="task-navigation">
-                                <form action="/cardbackward" method="post" >
-                                    <input name="selectedTask"  type="hidden"/>
-                                    <input name="selectedCardId"  type="hidden"/>
-                                    <input name="selectedBoardId" type="hidden"/>
+                            <div th:if="${!card.isFinisher() && !card.isStarter()}" class="task-navigation">
+                                <!-- Backward Button -->
+                                <form th:if="${card.getOrders() != 1}" action="/cardbackward" method="post">
+                                    <input name="selectedCardId" type="hidden" th:value="${card.id}" />
+                                    <input name="selectedBoardId" type="hidden" th:value="${selectedBoard?.id}" />
                                     <button>&larr;</button>
                                 </form>
-                                <form action="/cardtoward" method="post" >
-                                    <input name="selectedTask"type="hidden"/>
-                                    <input name="selectedCardId" type="hidden"/>
-                                    <input name="selectedBoardId" type="hidden"/>
+
+                                <!-- Forward Button -->
+                                <form th:if="${card.getOrders() != cards.size() - 2}" action="/cardtoward" method="post">
+                                    <input name="selectedCardId" type="hidden" th:value="${card.id}" />
+                                    <input name="selectedBoardId" type="hidden" th:value="${selectedBoard?.id}" />
                                     <button>&rarr;</button>
                                 </form>
                             </div>
-                            <form th:action="@{'/editCard/' + ${card.id}}" method="get">
-
+                            <form action="/editCard" method="post">
                                 <button type="submit" class="btn btn-outline-secondary btn-sm">
+                                    <input type="hidden" name="selectedCardId" th:value="${card.id}" />
                                     <i class="bi bi-pencil" style="font-size: 1rem;"></i> <!-- Pencil Icon -->
                                 </button>
                             </form>
@@ -294,12 +312,14 @@
                                 <button
                                         class="task-button"
                                         th:classappend="
-        ${task.completedAt != null} ? 'deadline-safe' :
-        (${task.deadline == null} ? 'no-deadline' :
-        (${taskService.getDeadlineStatus(task.deadline) == 0} ? 'deadline-passed' :
-        (${taskService.getDeadlineStatus(task.deadline) == 1} ? 'deadline-warning' :
-        'deadline-safe')))"
-                                    type="submit">
+    ${task.completedAt != null} ? 'deadline-safe' :
+    (${task.deadline == null} ? 'no-deadline' :
+    (${taskService.getDeadlineStatus(task.deadline) == 0} ? 'deadline-passed' :
+    (${taskService.getDeadlineStatus(task.deadline) == 1} ? 'deadline-warning' :
+    (${taskService.getDeadlineStatus(task.deadline) == 2} ? 'deadline-blue' :
+    'deadline-safe'))))"
+
+                                        type="submit">
                                     <span class="fw-bold" th:text="${task.title}"></span>
                                     <small th:if="${task.deadline != null}" th:text="'Deadline: ' + ${task.deadline}"></small>
                                     <small th:if="${task.deadline == null}">No Deadline</small>

@@ -110,7 +110,7 @@ public class BoardPageController {
                             task.setCard(card);
                             taskRepository.save(task);
                         });
-                cardsByBoard = cardService.sortCards(cardsByBoard); // Sort cards after updates
+                cardsByBoard = cardService.sortAndAssignOrders(cardsByBoard); // Sort cards after updates
                 break;
             }
         }
@@ -181,6 +181,15 @@ public class BoardPageController {
         } else if (finisher != null && finisher) {
             newCard.setFinisher(true);
         }
+        if (!cardRepository.findAll().isEmpty()) {
+            if (finisher==null){
+
+                if (starter==null){
+                    Integer maxOrder = cardRepository.findMaxOrderByBoardId(selectedBoardId);
+                    newCard.setOrders(maxOrder == null ? 1 : maxOrder + 1);
+                }
+            }
+        }
 
 
         cardRepository.save(newCard);
@@ -207,7 +216,7 @@ public class BoardPageController {
                            @RequestParam UUID selectedCardId) throws IOException {
 
         Task task;
-
+        Card card = cardRepository.findById(selectedCardId).orElse(null);
         if (taskId != null) {
             // Fetch the existing task for editing
             task = taskRepository.findById(taskId)
@@ -215,7 +224,7 @@ public class BoardPageController {
         } else {
             // Create a new task if taskId is null
             task = new Task();
-            task.setCard(cardRepository.findById(selectedCardId).orElse(null));
+            task.setCard(card);
             task.setStarted(false);
         }
 
@@ -237,7 +246,8 @@ public class BoardPageController {
 
             task.setAttachment(attachment);
         }
-
+        card.setHasTask(true);
+        cardRepository.save(card);
         // Save or update the task
         taskRepository.save(task);
 
@@ -262,7 +272,7 @@ public class BoardPageController {
         cardsByBoard = cardRepository.findByBoard_Id(selectedBoardId);
         for (Card card : cardsByBoard) {
             if (card.isFinisher()){
-                cardsByBoard = cardService.sortCards(cardsByBoard);
+                cardsByBoard = cardService.sortAndAssignOrders(cardsByBoard);
                 break;
             }
         }
@@ -295,7 +305,7 @@ public class BoardPageController {
         cardsByBoard = cardRepository.findByBoard_Id(selectedBoardId);
         for (Card card : cardsByBoard) {
             if (card.isFinisher()){
-                cardsByBoard = cardService.sortCards(cardsByBoard);
+                cardsByBoard = cardService.sortAndAssignOrders(cardsByBoard);
                 break;
             }
         }
@@ -347,8 +357,16 @@ public class BoardPageController {
     @Transactional
     public String deleteTask(@RequestParam UUID taskId,
                              @RequestParam UUID selectedBoardId){
+        Task task = taskRepository.findById(taskId).orElse(new Task());
+        Card card = task.getCard();
+        List<Task> byCardId = taskRepository.findByCardId(card.getId());
+        if (byCardId.size()==1){
+            card.setHasTask(false);
+            cardRepository.save(card);
+        }
         commentRepository.deleteByTaskId(taskId);
         taskRepository.deleteById(taskId);
+
         return "redirect:/?boardId=" + selectedBoardId;
     }
 
@@ -458,6 +476,79 @@ public class BoardPageController {
         List<Map<String, Object>> taskStatistics = taskRepository.findTaskStatisticsByUser();
         model.addAttribute("taskStatistics", taskStatistics);
         return "taskStatisticsPage";
+    }
+
+
+
+    @PostMapping("/cardtoward")
+    public String cardtoward(
+            @RequestParam UUID selectedBoardId,
+            @RequestParam UUID selectedCardId
+    ){
+
+        List<Card> cards1 = cardRepository.findByBoardId(selectedBoardId);
+        List<Card> cards = cardService.sortAndAssignOrders(cards1);
+        for (int i = 0; i < cards.size(); i++) {
+            if (cards.get(i).getId().equals(selectedCardId)) {
+                int a=cards.get(i).getOrders();
+                cards.get(i).setOrders(cards.get(i+1).getOrders());
+                cards.get(i+1).setOrders(a);
+                cardRepository.save(cards.get(i));
+                cardRepository.save(cards.get(i+1));
+                break;
+            }
+        }
+        return "redirect:/?boardId=" + selectedBoardId;
+    }
+
+    @PostMapping("/cardbackward")
+    public String cardbackward(
+            @RequestParam UUID selectedBoardId,
+            @RequestParam UUID selectedCardId
+    ){
+
+        List<Card> cards1 = cardRepository.findByBoardId(selectedBoardId);
+        List<Card> cards = cardService.sortAndAssignOrders(cards1);
+        for (int i = 0; i < cards.size(); i++) {
+            if (cards.get(i).getId().equals(selectedCardId)) {
+                int a=cards.get(i).getOrders();
+                cards.get(i).setOrders(cards.get(i-1).getOrders());
+                cards.get(i-1).setOrders(a);
+                cardRepository.save(cards.get(i));
+                cardRepository.save(cards.get(i-1));
+                break;
+            }
+        }
+        return "redirect:/?boardId=" + selectedBoardId;
+    }
+
+
+    @PostMapping("/editCard")
+    public String editCard(
+            Model model,
+            @RequestParam UUID selectedCardId
+
+    ){
+        Optional<Card> byId = cardRepository.findById(selectedCardId);
+        model.addAttribute("currentCard", byId.get());
+        return "editcardpage";
+    }
+
+    @PostMapping("/deleteCard")
+    public String deleteCard(@RequestParam UUID selectedCardId){
+        Optional<Card> byId = cardRepository.findById(selectedCardId);
+        Board board = byId.get().getBoard();
+        cardRepository.deleteById(selectedCardId);
+        return "redirect:/?boardId=" + board.getId();
+    }
+    @PostMapping("/saveEditedCard")
+    public String saveEditedCard(@RequestParam UUID selectedCardId,
+                                 @RequestParam String name){
+        Optional<Card> byId = cardRepository.findById(selectedCardId);
+        Board board = byId.get().getBoard();
+        byId.get().setName(name);
+        cardRepository.save(byId.get());
+        return "redirect:/?boardId=" + board.getId();
     }
 
 }

@@ -63,4 +63,5 @@ public interface TaskRepository extends JpaRepository<Task, UUID>, JpaSpecificat
         """, nativeQuery = true)
     List<Map<String, Object>> findTaskStatisticsByUser();
 
+    List<Task> findByCardId(UUID cardId);
 }

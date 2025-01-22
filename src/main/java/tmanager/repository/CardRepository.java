@@ -15,5 +15,11 @@ public interface CardRepository extends JpaRepository<Card, UUID>, JpaSpecificat
     @Query("SELECT t FROM Task t WHERE t.card IN :cards")
     List<Task> findTasksByCards(@Param("cards") List<Card> cards);
 
-    List<Card> findByBoard_Id(UUID cardId);
+    List<Card> findByBoard_Id(UUID boardId);
+
+
+    @Query("SELECT MAX(c.orders) FROM Card c WHERE c.board.id = :boardId")
+    Integer findMaxOrderByBoardId(@Param("boardId") UUID boardId);
+
+    List<Card> findByBoardId(UUID boardId);
 }

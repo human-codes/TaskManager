@@ -22,4 +22,5 @@ public class Card extends BaseEntity{
     private boolean isFinisher=false;
     private boolean isStarter=false;
     private boolean hasTask=false;
+    private int orders;
 }

@@ -31,8 +31,9 @@ public class TaskService {
         if (deadline.isBefore(now.plusDays(2))) {
             return 1; // Within 2 days
         }
-        return 2; // More than 2 days away
+        return 2; // More than 2 days away (this will trigger the blue background)
     }
+
 
     public void updateTaskStatuses() {
         List<Task> tasks = taskRepository.findAll();

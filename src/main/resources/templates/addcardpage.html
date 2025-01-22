@@ -14,18 +14,23 @@
       border-radius: 15px;
       text-align: center;
     }
+    .btn-container {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 20px;
+    }
+    .form-check {
+      display: flex;
+      align-items: center;
+      gap: 5px; /* Reduces the gap between the checkbox and label */
+      margin-bottom: 10px; /* Optional for spacing between checkbox and other fields */
+    }
   </style>
 </head>
 <body>
 <div class="container">
   <div class="form-container">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-      <h4 class="m-0">Card Name</h4>
-      <!-- Back Button -->
-      <form action="/" method="get">
-        <button class="btn btn-secondary btn-sm">Back</button>
-      </form>
-    </div>
+
     <!-- Updated form with conditional logic -->
     <form action="/saveCard" method="POST">
       <!-- Name Input (always shown) -->
@@ -54,9 +59,23 @@
           <!-- Finisher is true: no other options -->
           <p>Only a new card name can be added.</p>
         </div>
+
+        <!-- Starter Checkbox (Display when isStarter is false) -->
+        <div th:if="${!isStarter}">
+          <!-- Starter is false: show starter checkbox -->
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" name="starter" id="starter" value="true">
+            <label class="form-check-label" for="starter">Is Starter</label>
+          </div>
+        </div>
+
       </div>
 
-      <button type="submit" class="btn btn-primary">Save</button>
+      <!-- Buttons (Back and Save) -->
+      <div class="btn-container">
+        <a href="javascript:history.back()" class="btn btn-secondary">Back</a>
+        <button type="submit" class="btn btn-primary">Save</button>
+      </div>
     </form>
   </div>
 </div>
