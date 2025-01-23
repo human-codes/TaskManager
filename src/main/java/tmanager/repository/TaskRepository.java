@@ -41,27 +41,28 @@ public interface TaskRepository extends JpaRepository<Task, UUID>, JpaSpecificat
     List<Map<String, Object>> findExpiredTaskCountByUser();
 
     @Query(value = """
-        SELECT 
-            u.attachment_id AS ATTACHMENT_ID,
-            u.username AS userName,
-            COUNT(t.id) AS totalTaskCount,
-            SUM(CASE WHEN t.status = 'IN_PROGRESS' THEN 1 ELSE 0 END) AS inProgressTaskCount,
-            SUM(CASE WHEN t.status = 'NOT_STARTED' THEN 1 ELSE 0 END) AS notStartedTaskCount,
-            SUM(CASE WHEN t.status = 'COMPLETED' THEN 1 ELSE 0 END) AS completedTaskCount,
-            SUM(CASE WHEN t.status = 'EXPIRED' THEN 1 ELSE 0 END) AS expiredTaskCount,
-            SUM(CASE WHEN t.deadline IS NULL THEN 1 ELSE 0 END) AS noDeadlineTaskCount
-        FROM 
-            users u
-        LEFT JOIN 
-            task_users tu ON u.id = tu.users_id
-        LEFT JOIN 
-            task t ON t.id = tu.task_id
-        GROUP BY 
-            u.id, u.username
-        ORDER BY 
-            totalTaskCount DESC
-        """, nativeQuery = true)
+    SELECT 
+        u.attachment_id AS ATTACHMENT_ID,
+        u.username AS userName,
+        COUNT(t.id) AS totalTaskCount,
+        SUM(CASE WHEN t.status = 'IN_PROGRESS' THEN 1 ELSE 0 END) AS inProgressTaskCount,
+        SUM(CASE WHEN t.status = 'NOT_STARTED' THEN 1 ELSE 0 END) AS notStartedTaskCount,
+        SUM(CASE WHEN t.status = 'COMPLETED' THEN 1 ELSE 0 END) AS completedTaskCount,
+        SUM(CASE WHEN t.status = 'EXPIRED' THEN 1 ELSE 0 END) AS expiredTaskCount,
+        SUM(CASE WHEN t.status = 'NO_DEADLINE' THEN 1 ELSE 0 END) AS noDeadlineTaskCount
+    FROM 
+        users u
+    LEFT JOIN 
+        task_users tu ON u.id = tu.users_id
+    LEFT JOIN 
+        task t ON t.id = tu.task_id
+    GROUP BY 
+        u.id, u.username
+    ORDER BY 
+        totalTaskCount DESC
+""", nativeQuery = true)
     List<Map<String, Object>> findTaskStatisticsByUser();
+
 
     List<Task> findByCardId(UUID cardId);
 }

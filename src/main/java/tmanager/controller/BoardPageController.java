@@ -247,6 +247,9 @@ public class BoardPageController {
             task.setAttachment(attachment);
         }
         card.setHasTask(true);
+        if (deadline == null) {
+            task.setStatus(TaskStatus.NO_DEADLINE);
+        }
         cardRepository.save(card);
         // Save or update the task
         taskRepository.save(task);
